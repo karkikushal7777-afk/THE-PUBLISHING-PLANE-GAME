@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sky Dodger: Pro Edition</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #4ca1af; background: linear-gradient(to bottom, #2c3e50, #4ca1af); font-family: 'Segoe UI', sans-serif; }
+        canvas { display: block; }
+
+        #hud {
+            position: fixed; top: 15px; left: 15px; color: #fff;
+            font-size: 22px; font-weight: bold; pointer-events: none; z-index: 5;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #radarPanel {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            width: 170px;
+            height: 170px;
+            border-radius: 50%;
+            background: rgba(5, 15, 25, 0.68);
+            border: 2px solid rgba(97, 219, 251, 0.65);
+            box-shadow: 0 0 14px rgba(76, 201, 240, 0.35);
+            z-index: 6;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #radar {
+            width: 155px;
+            height: 155px;
+            border-radius: 50%;
+        }
+
+        #menu {
+            position: fixed; inset: 0; background: rgba(0, 10, 20, 0.85);
+            display: flex; align-items: center; justify-content: center; z-index: 10;
+        }
+        .container {
+            background: white; padding: 30px; border-radius: 20px;
+            text-align: center; border: 5px solid #4cc9f0; width: 450px;
+            box-shadow: 0 0 30px rgba(76, 201, 240, 0.4);
+        }
+        .btn {
+            padding: 10px 15px; margin: 5px; cursor: pointer; border: 2px solid #4cc9f0;
+            background: transparent; color: #4cc9f0; border-radius: 8px; font-weight: bold; transition: 0.2s;
+        }
+        .btn:hover { background: rgba(76, 201, 240, 0.1); }
+        .btn.active { background: #4cc9f0; color: white; }
+        .btn-chaos { border-color: #ff4d6d; color: #ff4d6d; }
+        .btn-chaos.active { background: #ff4d6d; color: white; }
+        .btn-luck { border-color: #9b5de5; color: #9b5de5; }
+        .btn-luck.active { background: #9b5de5; color: white; }
+
+        .hangar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 20px 0; }
+        .slot { border: 2px solid #eee; padding: 10px; cursor: pointer; border-radius: 10px; font-size: 11px; transition: 0.2s; }
+        .slot:hover { transform: translateY(-3px); }
+        .slot.selected { border-color: #ffd60a; background: #fff9db; box-shadow: 0 5px 15px rgba(255, 214, 10, 0.3); }
+        .start-btn {
+            background: #ff4d6d; color: white; border: none; padding: 15px 50px;
+            font-size: 20px; font-weight: bold; border-radius: 40px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 77, 109, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    COINS: <span id="coinVal">0</span> |
+    SCORE: <span id="scoreVal">0</span> |
+    MISSILES: <span id="mCount">0</span>
+</div>
+
+<div id="radarPanel">
+    <canvas id="radar" width="155" height="155"></canvas>
+</div>
+
+<div id="menu">
+    <div class="container">
+        <h1 style="color: #0077be; margin: 0 0 5px 0; letter-spacing: 2px;">SKY DODGER</h1>
+        <p style="margin-bottom: 20px; color: #666;">High-Altitude Interception</p>
+        <p>Bank: <span id="bankVal" style="color:#f39c12; font-weight: bold;">0</span> C</p>
+        <div class="mode-select">
+            <button id="easyBtn" class="btn active" onclick="setMode('easy')">EASY</button>
+            <button id="hardBtn" class="btn" onclick="setMode('hard')">HARD</button>
+            <button id="chaosBtn" class="btn btn-chaos" onclick="setMode('chaos')">CHAOS</button>
+            <button id="luckBtn" class="btn btn-luck" onclick="setMode('luck')">LUCK</button>
+        </div>
+        <div class="hangar" id="hangar"></div>
+        <button class="start-btn" onclick="startGame()">ENGAGE</button>
+    </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const radarCanvas = document.getElementById("radar");
+const radarCtx = radarCanvas.getContext("2d");
+
+let mode = 'easy';
+let coins = parseInt(localStorage.getItem('sky_coins')) || 0;
+let unlocked = JSON.parse(localStorage.getItem('sky_ships')) || ['Classic'];
+let activeShip = localStorage.getItem('sky_active') || 'Classic';
+
+const GLOBAL_SPEED_NERF = 0.82;
+
+const SHIPS = {
+    'Classic': { color: '#bdc3c7', accent: '#c0392b', speed: 0.65, turn: 0.12, price: 0 },
+    'Viper':   { color: '#f1c40f', accent: '#2c3e50', speed: 0.85, turn: 0.16, price: 100 },
+    'Falcon':  { color: '#3498db', accent: '#2980b9', speed: 0.75, turn: 0.2, price: 250 },
+    'Nimbus':  { color: '#e0fbfc', accent: '#3a86ff', speed: 0.68, turn: 0.24, price: 450 },
+    'Blaze':   { color: '#f28482', accent: '#c1121f', speed: 0.92, turn: 0.15, price: 700 },
+    'Ghost':   { color: '#adb5bd', accent: '#6c757d', speed: 0.72, turn: 0.28, price: 950 }
+};
+
+let isRunning = false, score = 0, frame = 0, camX = 0, camY = 0, shake = 0, zoom = 0.6;
+let keys = {};
+const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0 };
+let missiles = [], loot = [], particles = [], clouds = [], engineFlames = [];
+
+function seedClouds() {
+    clouds = [];
+    for (let i = 0; i < 140; i++) {
+        clouds.push({
+            x: Math.random() * 10000 - 5000,
+            y: Math.random() * 10000 - 5000,
+            w: 120 + Math.random() * 360,
+            h: 55 + Math.random() * 180,
+            opacity: 0.06 + Math.random() * 0.35
+        });
+    }
+}
+seedClouds();
+
+function setMode(m) {
+    mode = m;
+    document.getElementById('easyBtn').className = m === 'easy' ? 'btn active' : 'btn';
+    document.getElementById('hardBtn').className = m === 'hard' ? 'btn active' : 'btn';
+    document.getElementById('chaosBtn').className = m === 'chaos' ? 'btn btn-chaos active' : 'btn btn-chaos';
+    document.getElementById('luckBtn').className = m === 'luck' ? 'btn btn-luck active' : 'btn btn-luck';
+}
+
+function updateHangar() {
+    const gui = document.getElementById('hangar');
+    gui.innerHTML = '';
+    for (let s in SHIPS) {
+        let isOwn = unlocked.includes(s);
+        let div = document.createElement('div');
+        div.className = `slot ${activeShip === s ? 'selected' : ''}`;
+        div.innerHTML = `<b>${s}</b><br>${isOwn ? 'READY' : SHIPS[s].price + ' C'}`;
+        div.onclick = () => {
+            if (isOwn) { activeShip = s; }
+            else if (coins >= SHIPS[s].price) {
+                coins -= SHIPS[s].price; unlocked.push(s); activeShip = s;
+                save();
+            }
+            updateHangar(); syncUI();
+        };
+        gui.appendChild(div);
+    }
+}
+
+function save() {
+    localStorage.setItem('sky_coins', coins);
+    localStorage.setItem('sky_ships', JSON.stringify(unlocked));
+    localStorage.setItem('sky_active', activeShip);
+}
+
+function syncUI() {
+    document.getElementById('bankVal').innerText = coins;
+    document.getElementById('coinVal').innerText = coins;
+    document.getElementById('scoreVal').innerText = score;
+    document.getElementById('mCount').innerText = missiles.length;
+}
+
+function spawnExplosion(x, y) {
+    shake = 35;
+    for (let i = 0; i < 40; i++) {
+        particles.push({
+            x, y, vx: (Math.random() - 0.5) * 18, vy: (Math.random() - 0.5) * 18,
+            life: 1.0, color: i % 2 === 0 ? '#ffae00' : '#ffffff', size: 12
+        });
+    }
+}
+
+function drawRadar() {
+    radarCtx.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+    const center = radarCanvas.width / 2;
+    const maxRange = 1700;
+
+    radarCtx.fillStyle = "rgba(0, 25, 35, 0.82)";
+    radarCtx.beginPath();
+    radarCtx.arc(center, center, center - 2, 0, Math.PI * 2);
+    radarCtx.fill();
+
+    radarCtx.strokeStyle = "rgba(76, 201, 240, 0.35)";
+    radarCtx.lineWidth = 1;
+    for (let r = 25; r <= 70; r += 23) {
+        radarCtx.beginPath();
+        radarCtx.arc(center, center, r, 0, Math.PI * 2);
+        radarCtx.stroke();
+    }
+
+    radarCtx.strokeStyle = "rgba(255,255,255,0.25)";
+    radarCtx.beginPath();
+    radarCtx.moveTo(center, 8);
+    radarCtx.lineTo(center, radarCanvas.height - 8);
+    radarCtx.moveTo(8, center);
+    radarCtx.lineTo(radarCanvas.width - 8, center);
+    radarCtx.stroke();
+
+    missiles.forEach(m => {
+        const dx = m.x - player.x;
+        const dy = m.y - player.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxRange) return;
+        const rx = center + (dx / maxRange) * (center - 12);
+        const ry = center + (dy / maxRange) * (center - 12);
+        radarCtx.fillStyle = mode === 'luck' ? '#f15bb5' : '#ff4d6d';
+        radarCtx.beginPath();
+        radarCtx.arc(rx, ry, 3, 0, Math.PI * 2);
+        radarCtx.fill();
+    });
+
+    radarCtx.fillStyle = '#00f5d4';
+    radarCtx.beginPath();
+    radarCtx.arc(center, center, 4, 0, Math.PI * 2);
+    radarCtx.fill();
+}
+
+function emitEngineFlame() {
+    if (frame % 2 !== 0) return;
+    const s = SHIPS[activeShip];
+    const speed = Math.hypot(player.vx, player.vy);
+    const base = Math.max(0.2, speed * 0.15 + s.speed * 0.4);
+    const off = Math.PI + player.angle;
+
+    for (let i = 0; i < 2; i++) {
+        const spread = (Math.random() - 0.5) * 0.45;
+        const offsetY = i === 0 ? -7 : 7;
+        engineFlames.push({
+            x: player.x + Math.cos(player.angle) * -25 + Math.sin(player.angle) * offsetY,
+            y: player.y + Math.sin(player.angle) * -25 - Math.cos(player.angle) * offsetY,
+            vx: Math.cos(off + spread) * (4 + base + Math.random() * 1.8),
+            vy: Math.sin(off + spread) * (4 + base + Math.random() * 1.8),
+            life: 0.95,
+            size: 7 + Math.random() * 4
+        });
+    }
+}
+
+function startGame() {
+    isRunning = true; score = 0; frame = 0; zoom = 0.6;
+    missiles = []; loot = []; particles = []; engineFlames = [];
+    player.x = 0; player.y = 0; player.vx = 0; player.vy = 0; player.angle = 0;
+    document.getElementById('menu').style.display = 'none';
+    requestAnimationFrame(loop);
+}
+
+function loop() {
+    if (!isRunning) return;
+    frame++;
+
+    let speed = Math.hypot(player.vx, player.vy);
+    let targetZoom = 0.6 - (speed * 0.005);
+    zoom += (targetZoom - zoom) * 0.05;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#4ca1af";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (shake > 0) { ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); shake *= 0.9; }
+
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-camX, -camY);
+
+    clouds.forEach(c => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${c.opacity})`;
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, c.w, c.h, 0, 0, 7);
+        ctx.fill();
+        if (Math.abs(player.x - c.x) > 6200) c.x = player.x + (Math.random() - 0.5) * 6200;
+        if (Math.abs(player.y - c.y) > 6200) c.y = player.y + (Math.random() - 0.5) * 6200;
+    });
+
+    const s = SHIPS[activeShip];
+    const accel = s.speed * GLOBAL_SPEED_NERF;
+    if (keys['w'] || keys['arrowup']) player.vy -= accel;
+    if (keys['s'] || keys['arrowdown']) player.vy += accel;
+    if (keys['a'] || keys['arrowleft']) player.vx -= accel;
+    if (keys['d'] || keys['arrowright']) player.vx += accel;
+    player.vx *= 0.956;
+    player.vy *= 0.956;
+    player.x += player.vx;
+    player.y += player.vy;
+
+    if (Math.hypot(player.vx, player.vy) > 0.2) player.angle = Math.atan2(player.vy, player.vx);
+    camX += (player.x - camX) * 0.1;
+    camY += (player.y - camY) * 0.1;
+
+    emitEngineFlame();
+
+    if (frame % 150 === 0) loot.push({ x: player.x + (Math.random() - 0.5) * 4000, y: player.y + (Math.random() - 0.5) * 4000 });
+    for (let i = loot.length - 1; i >= 0; i--) {
+        let l = loot[i];
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#ffd60a";
+        ctx.fillStyle = "#ffd60a";
+        ctx.beginPath();
+        ctx.arc(l.x, l.y, 25, 0, 6.28);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        if (Math.hypot(player.x - l.x, player.y - l.y) < 70) {
+            coins += 10;
+            score += 50;
+            loot.splice(i, 1);
+            syncUI();
+            save();
+        }
+    }
+
+    let baseRate = mode === 'easy' ? 95 : (mode === 'hard' ? 55 : mode === 'chaos' ? 22 : 15);
+    let ramp = Math.floor(frame / 600);
+    if (frame % Math.max(8, baseRate - ramp) === 0) {
+        let a = Math.random() * 6.28;
+        const luckRandomness = mode === 'luck' ? 0.85 + Math.random() * 0.6 : 1;
+        missiles.push({
+            x: player.x + Math.cos(a) * (1400 + Math.random() * 400),
+            y: player.y + Math.sin(a) * (1400 + Math.random() * 400),
+            angle: a + Math.PI + (mode === 'luck' ? (Math.random() - 0.5) * 1.2 : 0),
+            speed: (9 + Math.random() * 5) * luckRandomness,
+            trail: []
+        });
+        syncUI();
+    }
+
+    for (let i = missiles.length - 1; i >= 0; i--) {
+        let m = missiles[i];
+        let target = Math.atan2(player.y - m.y, player.x - m.x);
+        let diff = target - m.angle;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        const turnRate = mode === 'luck' ? (0.02 + Math.random() * 0.09) : 0.048;
+        m.angle += diff * turnRate;
+        if (mode === 'luck' && Math.random() > 0.82) {
+            m.angle += (Math.random() - 0.5) * 0.5;
+        }
+        m.x += Math.cos(m.angle) * m.speed;
+        m.y += Math.sin(m.angle) * m.speed;
+
+        if (frame % 3 === 0) {
+            m.trail.push({ x: m.x, y: m.y });
+            if (m.trail.length > 12) m.trail.shift();
+        }
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        m.trail.forEach((t, idx) => {
+            if (idx === 0) ctx.moveTo(t.x, t.y);
+            else ctx.lineTo(t.x, t.y);
+        });
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(m.x, m.y);
+        ctx.rotate(m.angle);
+        ctx.fillStyle = "#ff5500";
+        ctx.beginPath();
+        ctx.arc(-22, 0, 12, 0, 7);
+        ctx.fill();
+        ctx.fillStyle = "#333";
+        ctx.fillRect(-20, -8, 45, 16);
+        ctx.fillStyle = "#e74c3c";
+        ctx.beginPath();
+        ctx.moveTo(25, -8);
+        ctx.lineTo(48, 0);
+        ctx.lineTo(25, 8);
+        ctx.fill();
+        ctx.restore();
+
+        if (Math.hypot(player.x - m.x, player.y - m.y) < 35) {
+            spawnExplosion(player.x, player.y);
+            isRunning = false;
+        }
+
+        for (let j = i - 1; j >= 0; j--) {
+            if (Math.hypot(m.x - missiles[j].x, m.y - missiles[j].y) < 60) {
+                missiles.splice(i, 1);
+                missiles.splice(j, 1);
+                score += 100;
+                syncUI();
+                break;
+            }
+        }
+        if (m && Math.hypot(player.x - m.x, player.y - m.y) > 4500) {
+            missiles.splice(i, 1);
+            syncUI();
+        }
+    }
+
+    for (let i = engineFlames.length - 1; i >= 0; i--) {
+        let f = engineFlames[i];
+        f.x += f.vx;
+        f.y += f.vy;
+        f.life -= 0.055;
+        f.vx *= 0.92;
+        f.vy *= 0.92;
+        ctx.globalAlpha = Math.max(0, f.life);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, Math.max(0.8, f.size * f.life), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(173, 216, 255, 0.75)';
+        ctx.beginPath();
+        ctx.arc(f.x - f.vx * 0.3, f.y - f.vy * 0.3, Math.max(0.5, (f.size - 2) * f.life), 0, Math.PI * 2);
+        ctx.fill();
+        if (f.life <= 0) engineFlames.splice(i, 1);
+    }
+    ctx.globalAlpha = 1;
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.04;
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, 6.28);
+        ctx.fill();
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle);
+    ctx.fillStyle = s.accent;
+    ctx.beginPath();
+    ctx.moveTo(-22, -38);
+    ctx.lineTo(8, 0);
+    ctx.lineTo(-22, 38);
+    ctx.fill();
+    ctx.fillStyle = s.color;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 38, 14, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#2c3e50";
+    ctx.beginPath();
+    ctx.ellipse(15, 0, 14, 7, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.beginPath();
+    ctx.ellipse(18, -3, 6, 2, 0.4, 0, 7);
+    ctx.fill();
+    ctx.restore();
+
+    drawRadar();
+
+    if (!isRunning) {
+        setTimeout(() => {
+            document.getElementById('menu').style.display = 'flex';
+            syncUI();
+        }, 1200);
+    } else {
+        requestAnimationFrame(loop);
+    }
+}
+
+window.onkeydown = e => keys[e.key.toLowerCase()] = true;
+window.onkeyup = e => keys[e.key.toLowerCase()] = false;
+window.onresize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
+window.onresize();
+updateHangar();
+syncUI();
+drawRadar();
+</script>
+</body>
+</html>
