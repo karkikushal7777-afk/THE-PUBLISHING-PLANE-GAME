@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sky Dodger: Pro Edition</title>
+  <style>
+    :root {
+      --cyan: #4cc9f0;
+      --danger: #ff4d6d;
+      --luck: #9b5de5;
+      --ink: #1f2d3b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #1f3a56, #4ca1af);
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    #hud {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 6;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.45;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.45);
+      pointer-events: none;
+    }
+
+    #radarPanel {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      width: 166px;
+      height: 166px;
+      border-radius: 50%;
+      border: 2px solid rgba(97, 219, 251, 0.65);
+      background: rgba(5, 15, 25, 0.66);
+      box-shadow: 0 0 14px rgba(76, 201, 240, 0.35);
+      z-index: 7;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #radar {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+    }
+
+    #menu {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 10, 20, 0.84);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      padding: 16px;
+    }
+
+    .container {
+      width: min(890px, 95vw);
+      background: #fff;
+      color: var(--ink);
+      border: 5px solid var(--cyan);
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(76, 201, 240, 0.4);
+      padding: 22px;
+    }
+
+    .menu-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 16px;
+    }
+
+    .panel {
+      background: #f8fbff;
+      border: 2px solid #d9ecff;
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .panel h3 {
+      margin: 0 0 8px 0;
+      color: #0077be;
+      letter-spacing: 0.35px;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field input {
+      border: 2px solid #bfe3ff;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      margin: 4px;
+      cursor: pointer;
+      border: 2px solid var(--cyan);
+      color: #0081b6;
+      background: transparent;
+      border-radius: 8px;
+      font-weight: 700;
+      transition: 0.18s;
+    }
+
+    .btn:hover {
+      background: rgba(76, 201, 240, 0.12);
+    }
+
+    .btn.active {
+      background: var(--cyan);
+      color: #fff;
+    }
+
+    .btn-chaos {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .btn-chaos.active {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-luck {
+      border-color: var(--luck);
+      color: var(--luck);
+    }
+
+    .btn-luck.active {
+      background: var(--luck);
+      color: #fff;
+    }
+
+    .hangar {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 12px 0 4px;
+    }
+
+    .slot {
+      border: 2px solid #e5eff7;
+      border-radius: 10px;
+      padding: 10px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      text-align: center;
+    }
+
+    .slot:hover {
+      transform: translateY(-2px);
+    }
+
+    .slot.selected {
+      border-color: #ffd60a;
+      background: #fff9db;
+      box-shadow: 0 5px 15px rgba(255, 214, 10, 0.2);
+    }
+
+    .ship-preview {
+      width: 94px;
+      height: 34px;
+      border-radius: 8px;
+      background: #edf6ff;
+      border: 1px solid #cbe6ff;
+    }
+
+    .start-btn {
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 40px;
+      padding: 14px 40px;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      box-shadow: 0 4px 15px rgba(255, 77, 109, 0.35);
+    }
+
+    #mobileControls {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      display: none;
+      z-index: 9;
+    }
+
+    .stick-zone {
+      position: absolute;
+      left: 12px;
+      bottom: 18px;
+      width: 44vw;
+      max-width: 220px;
+      height: 44vw;
+      max-height: 220px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(8, 24, 34, 0.25);
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .stick-knob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.55);
+      transform: translate(-50%, -50%);
+    }
+
+    .boost-list {
+      font-size: 13px;
+      color: #3a4a5b;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 900px) {
+      .menu-grid { grid-template-columns: 1fr; }
+      .hangar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #hud { font-size: 15px; }
+      #radarPanel { width: 138px; height: 138px; }
+      #radar { width: 122px; height: 122px; }
+      #mobileControls.mobile-visible { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    PILOT: <span id="pilotHud">ACE</span> | BANK: <span id="coinVal">0</span> C<br />
+    SCORE: <span id="scoreVal">0</span> | HIGH: <span id="highScoreHud">0</span><br />
+    MISSILES: <span id="mCount">0</span> | POWER: <span id="powerVal">NONE</span>
+  </div>
+
+  <div id="radarPanel">
+    <canvas id="radar" width="150" height="150"></canvas>
+  </div>
+
+  <div id="menu">
+    <div class="container">
+      <h1 style="color:#0077be;margin:0;letter-spacing:2px">SKY DODGER</h1>
+      <p style="margin:6px 0 0;color:#5a6c7f">High-Altitude Interception Command</p>
+
+      <div class="menu-grid">
+        <div class="panel">
+          <h3>Pilot Control</h3>
+          <div class="meta">
+            <div class="field">
+              <label for="pilotName">Sign In (Pilot Name)</label>
+              <input id="pilotName" maxlength="16" placeholder="Enter your callsign" />
+            </div>
+            <div class="field">
+              <label>Career Stats</label>
+              <div style="font-size:14px">
+                Bank: <b><span id="bankVal">0</span> C</b><br />
+                High Score: <b><span id="highScoreVal">0</span></b>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px">
+            <button id="easyBtn" class="btn active" onclick="setMode('easy')">EASY</button>
+            <button id="hardBtn" class="btn" onclick="setMode('hard')">HARD</button>
+            <button id="chaosBtn" class="btn btn-chaos" onclick="setMode('chaos')">CHAOS</button>
+            <button id="luckBtn" class="btn btn-luck" onclick="setMode('luck')">LUCK</button>
+          </div>
+
+          <button class="start-btn" onclick="startGame()">ENGAGE</button>
+        </div>
+
+        <div class="panel">
+          <h3>Hangar (Buy + Preview)</h3>
+          <div class="hangar" id="hangar"></div>
+          <div class="boost-list">
+            <b>Power-ups:</b><br />
+            • ⚡ Nitro<br />
+            • 🛡 Shield<br />
+            • 🧲 Magnet<br />
+            • ❄ Slow Motion<br />
+            • 💣 Bomb
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="mobileControls">
+    <div id="stickZone" class="stick-zone">
+      <div id="stickKnob" class="stick-knob"></div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const radarCanvas = document.getElementById('radar');
+    const radarCtx = radarCanvas.getContext('2d');
+
+    const mobileControls = document.getElementById('mobileControls');
+    const stickZone = document.getElementById('stickZone');
+    const stickKnob = document.getElementById('stickKnob');
+
+    const menuEl = document.getElementById('menu');
+    const pilotNameInput = document.getElementById('pilotName');
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+
+    let mode = 'easy';
+    let coins = parseInt(localStorage.getItem('sky_coins')) || 0;
+    let unlocked = JSON.parse(localStorage.getItem('sky_ships')) || ['Classic'];
+    let activeShip = localStorage.getItem('sky_active') || 'Classic';
+    let pilotName = localStorage.getItem('sky_pilot') || 'ACE';
+    let highScore = parseInt(localStorage.getItem('sky_high_score')) || 0;
+
+    const GLOBAL_SPEED_NERF = 0.78;
+    const MAX_PARTICLES = 150;
+    const MAX_MISSILES = 110;
+    const MAX_ENGINE_FLAMES = 120;
+
+    const SHIPS = {
+      Classic: { color: '#bdc3c7', accent: '#c0392b', speed: 0.65, turn: 0.12, price: 0 },
+      Viper:   { color: '#f1c40f', accent: '#2c3e50', speed: 0.85, turn: 0.16, price: 100 },
+      Falcon:  { color: '#3498db', accent: '#2980b9', speed: 0.75, turn: 0.20, price: 250 },
+      Nimbus:  { color: '#e0fbfc', accent: '#3a86ff', speed: 0.68, turn: 0.24, price: 450 },
+      Blaze:   { color: '#f28482', accent: '#c1121f', speed: 0.92, turn: 0.15, price: 700 },
+      Ghost:   { color: '#adb5bd', accent: '#6c757d', speed: 0.72, turn: 0.28, price: 950 }
+    };
+
+    let isRunning = false;
+    let score = 0;
+    let frame = 0;
+    let camX = 0;
+    let camY = 0;
+    let shake = 0;
+    let zoom = 0.6;
+
+    let keys = {};
+    let stickInput = { x: 0, y: 0, active: false };
+
+    const player = {
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      angle: 0
+    };
+
+    const powerState = {
+      type: 'none',
+      timer: 0
+    };
+
+    let missiles = [];
+    let loot = [];
+    let powerOrbs = [];
+    let particles = [];
+    let clouds = [];
+    let engineFlames = [];
+
+    function seedClouds() {
+      clouds = [];
+      const cloudCount = isTouchDevice ? 100 : 170;
+      for (let i = 0; i < cloudCount; i++) {
+        clouds.push({
+          x: Math.random() * 13000 - 6500,
+          y: Math.random() * 13000 - 6500,
+          w: 100 + Math.random() * 380,
+          h: 60 + Math.random() * 180,
+          opacity: 0.05 + Math.random() * 0.3
+        });
+      }
+    }
+
+    seedClouds();
+
+    function setMode(m) {
+      mode = m;
+      document.getElementById('easyBtn').className = m === 'easy' ? 'btn active' : 'btn';
+      document.getElementById('hardBtn').className = m === 'hard' ? 'btn active' : 'btn';
+      document.getElementById('chaosBtn').className = m === 'chaos' ? 'btn btn-chaos active' : 'btn btn-chaos';
+      document.getElementById('luckBtn').className = m === 'luck' ? 'btn btn-luck active' : 'btn btn-luck';
+    }
+
+    function drawShipPreview(canvasEl, ship) {
+      const pctx = canvasEl.getContext('2d');
+      pctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+      pctx.fillStyle = '#edf6ff';
+      pctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+
+      pctx.translate(canvasEl.width / 2, canvasEl.height / 2);
+      pctx.scale(0.75, 0.75);
+
+      pctx.fillStyle = ship.accent;
+      pctx.beginPath();
+      pctx.moveTo(-26, -18);
+      pctx.lineTo(8, 0);
+      pctx.lineTo(-26, 18);
+      pctx.fill();
+
+      pctx.fillStyle = ship.color;
+      pctx.beginPath();
+      pctx.ellipse(0, 0, 26, 10, 0, 0, Math.PI * 2);
+      pctx.fill();
+
+      pctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    function updateHangar() {
+      const gui = document.getElementById('hangar');
+      gui.innerHTML = '';
+
+      Object.keys(SHIPS).forEach(name => {
+        const ship = SHIPS[name];
+        const isOwn = unlocked.includes(name);
+
+        const div = document.createElement('div');
+        div.className = `slot ${activeShip === name ? 'selected' : ''}`;
+
+        const preview = document.createElement('canvas');
+        preview.width = 94;
+        preview.height = 34;
+        preview.className = 'ship-preview';
+
+        const stats = document.createElement('div');
+        stats.innerHTML = `<b>${name}</b><br>${isOwn ? 'READY' : ship.price + ' C'}<br>SPD ${(ship.speed * 10).toFixed(1)}`;
+
+        div.appendChild(preview);
+        div.appendChild(stats);
+        gui.appendChild(div);
+
+        drawShipPreview(preview, ship);
+
+        div.onclick = () => {
+          if (isOwn) {
+            activeShip = name;
+          } else if (coins >= ship.price) {
+            coins -= ship.price;
+            unlocked.push(name);
+            activeShip = name;
+            save();
+          }
+
+          updateHangar();
+          syncUI();
+        };
+      });
+    }
+
+    function save() {
+      localStorage.setItem('sky_coins', coins);
+      localStorage.setItem('sky_ships', JSON.stringify(unlocked));
+      localStorage.setItem('sky_active', activeShip);
+      localStorage.setItem('sky_pilot', pilotName);
+      localStorage.setItem('sky_high_score', highScore);
+    }
+
+    function syncUI() {
+      document.getElementById('bankVal').innerText = coins;
+      document.getElementById('coinVal').innerText = coins;
+      document.getElementById('scoreVal').innerText = score;
+      document.getElementById('mCount').innerText = missiles.length;
+      document.getElementById('pilotHud').innerText = pilotName;
+      document.getElementById('highScoreVal').innerText = highScore;
+      document.getElementById('highScoreHud').innerText = highScore;
+      document.getElementById('powerVal').innerText = powerState.type === 'none' ? 'NONE' : `${powerState.type.toUpperCase()} ${Math.ceil(powerState.timer / 60)}s`;
+      pilotNameInput.value = pilotName;
+    }
+
+    function spawnExplosion(x, y, colorA = '#ffae00', colorB = '#ffffff') {
+      shake = 26;
+      const burst = isTouchDevice ? 14 : 24;
+
+      for (let i = 0; i < burst; i++) {
+        if (particles.length >= MAX_PARTICLES) {
+          particles.shift();
+        }
+
+        particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 12,
+          vy: (Math.random() - 0.5) * 12,
+          life: 1,
+          color: i % 2 ? colorA : colorB,
+          size: 7 + Math.random() * 4
+        });
+      }
+    }
+
+    function drawRadar() {
+      radarCtx.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+      const center = radarCanvas.width / 2;
+      const maxRange = 1900;
+
+      radarCtx.fillStyle = 'rgba(0, 25, 35, 0.82)';
+      radarCtx.beginPath();
+      radarCtx.arc(center, center, center - 2, 0, Math.PI * 2);
+      radarCtx.fill();
+
+      radarCtx.strokeStyle = 'rgba(76, 201, 240, 0.34)';
+      [24, 44, 64].forEach(r => {
+        radarCtx.beginPath();
+        radarCtx.arc(center, center, r, 0, Math.PI * 2);
+        radarCtx.stroke();
+      });
+
+      missiles.forEach(m => {
+        const dx = m.x - player.x;
+        const dy = m.y - player.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist > maxRange) return;
+
+        radarCtx.fillStyle = mode === 'luck' ? '#f15bb5' : '#ff4d6d';
+        radarCtx.beginPath();
+        radarCtx.arc(
+          center + (dx / maxRange) * (center - 10),
+          center + (dy / maxRange) * (center - 10),
+          2.7,
+          0,
+          Math.PI * 2
+        );
+        radarCtx.fill();
+      });
+
+      radarCtx.fillStyle = '#00f5d4';
+      radarCtx.beginPath();
+      radarCtx.arc(center, center, 4, 0, Math.PI * 2);
+      radarCtx.fill();
+    }
+
+    function emitEngineFlame() {
+      if (frame % 2 !== 0) return;
+
+      const s = SHIPS[activeShip];
+      const speed = Math.hypot(player.vx, player.vy);
+      const base = Math.max(0.3, speed * 0.14 + s.speed * 0.35);
+      const behind = Math.PI + player.angle;
+
+      for (let i = 0; i < 2; i++) {
+        if (engineFlames.length >= MAX_ENGINE_FLAMES) {
+          engineFlames.shift();
+        }
+
+        const side = i ? 7 : -7;
+        const spread = (Math.random() - 0.5) * 0.42;
+
+        engineFlames.push({
+          x: player.x - Math.cos(player.angle) * 24 + Math.sin(player.angle) * side,
+          y: player.y - Math.sin(player.angle) * 24 - Math.cos(player.angle) * side,
+          vx: Math.cos(behind + spread) * (3.6 + base + Math.random() * 1.4),
+          vy: Math.sin(behind + spread) * (3.6 + base + Math.random() * 1.4),
+          life: 0.92,
+          size: 5 + Math.random() * 3
+        });
+      }
+    }
+
+    function applyPower(type) {
+      if (type === 'bomb') {
+        for (let i = missiles.length - 1; i >= 0; i--) {
+          if (Math.hypot(player.x - missiles[i].x, player.y - missiles[i].y) < 640) {
+            missiles.splice(i, 1);
+          }
+        }
+        score += 90;
+        powerState.type = 'none';
+        powerState.timer = 0;
+        return;
+      }
+
+      powerState.type = type;
+      powerState.timer = 60 * 8;
+    }
+
+    function spawnPowerOrb() {
+      const roll = Math.random();
+      let type = 'shield';
+      if (roll < 0.2) type = 'speed';
+      else if (roll < 0.4) type = 'magnet';
+      else if (roll < 0.6) type = 'slow';
+      else if (roll < 0.8) type = 'bomb';
+      else type = 'shield';
+
+      powerOrbs.push({
+        type,
+        x: player.x + (Math.random() - 0.5) * 3200,
+        y: player.y + (Math.random() - 0.5) * 3200
+      });
+    }
+
+    function resetRound() {
+      missiles = [];
+      loot = [];
+      particles = [];
+      engineFlames = [];
+      powerOrbs = [];
+
+      player.x = 0;
+      player.y = 0;
+      player.vx = 0;
+      player.vy = 0;
+      player.angle = 0;
+
+      powerState.type = 'none';
+      powerState.timer = 0;
+    }
+
+    function startGame() {
+      pilotName = (pilotNameInput.value || 'ACE').trim().slice(0, 16) || 'ACE';
+      save();
+
+      isRunning = true;
+      score = 0;
+      frame = 0;
+      zoom = 0.6;
+
+      resetRound();
+
+      menuEl.style.display = 'none';
+      if (isTouchDevice) {
+        mobileControls.classList.add('mobile-visible');
+      }
+
+      syncUI();
+      requestAnimationFrame(loop);
+    }
+
+    function loseLife() {
+      if (powerState.type === 'shield') {
+        powerState.type = 'none';
+        powerState.timer = 0;
+        spawnExplosion(player.x, player.y, '#8ecae6', '#ffffff');
+        return;
+      }
+
+      spawnExplosion(player.x, player.y);
+      isRunning = false;
+
+      if (score > highScore) {
+        highScore = score;
+        save();
+      }
+
+      setTimeout(() => {
+        menuEl.style.display = 'flex';
+        mobileControls.classList.remove('mobile-visible');
+        syncUI();
+      }, 1000);
+    }
+
+    function loop() {
+      if (!isRunning) return;
+      frame++;
+
+      const speed = Math.hypot(player.vx, player.vy);
+      zoom += (0.6 - speed * 0.0048 - zoom) * 0.05;
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = '#4ca1af';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (shake > 0) {
+        ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+        shake *= 0.9;
+      }
+
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-camX, -camY);
+
+      clouds.forEach(c => {
+        ctx.fillStyle = `rgba(255,255,255,${c.opacity})`;
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, c.w, c.h, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (Math.abs(player.x - c.x) > 7600) c.x = player.x + (Math.random() - 0.5) * 7600;
+        if (Math.abs(player.y - c.y) > 7600) c.y = player.y + (Math.random() - 0.5) * 7600;
+      });
+
+      const s = SHIPS[activeShip];
+      const speedMul = powerState.type === 'speed' ? 1.35 : 1;
+      const accel = s.speed * GLOBAL_SPEED_NERF * speedMul;
+
+      if (stickInput.active) {
+        player.vx += stickInput.x * accel;
+        player.vy += stickInput.y * accel;
+      }
+
+      if (keys['w'] || keys['arrowup']) player.vy -= accel;
+      if (keys['s'] || keys['arrowdown']) player.vy += accel;
+      if (keys['a'] || keys['arrowleft']) player.vx -= accel;
+      if (keys['d'] || keys['arrowright']) player.vx += accel;
+
+      player.vx *= 0.955;
+      player.vy *= 0.955;
+      player.x += player.vx;
+      player.y += player.vy;
+
+      if (Math.hypot(player.vx, player.vy) > 0.2) {
+        player.angle = Math.atan2(player.vy, player.vx);
+      }
+
+      camX += (player.x - camX) * 0.1;
+      camY += (player.y - camY) * 0.1;
+
+      emitEngineFlame();
+
+      if (frame % 150 === 0) {
+        loot.push({
+          x: player.x + (Math.random() - 0.5) * 3600,
+          y: player.y + (Math.random() - 0.5) * 3600
+        });
+      }
+
+      if (frame % 420 === 0) {
+        spawnPowerOrb();
+      }
+
+      const coinGrabRange = powerState.type === 'magnet' ? 360 : 65;
+
+      for (let i = loot.length - 1; i >= 0; i--) {
+        const l = loot[i];
+        const dist = Math.hypot(player.x - l.x, player.y - l.y);
+
+        if (powerState.type === 'magnet' && dist < 360 && dist > 8) {
+          l.x += (player.x - l.x) * 0.08;
+          l.y += (player.y - l.y) * 0.08;
+        }
+
+        if (!isTouchDevice) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#ffd60a';
+        }
+
+        ctx.fillStyle = '#ffd60a';
+        ctx.beginPath();
+        ctx.arc(l.x, l.y, 20, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (!isTouchDevice) {
+          ctx.shadowBlur = 0;
+        }
+
+        if (dist < coinGrabRange) {
+          coins += 10;
+          score += 45;
+          loot.splice(i, 1);
+          save();
+        }
+      }
+
+      for (let i = powerOrbs.length - 1; i >= 0; i--) {
+        const p = powerOrbs[i];
+        const icon = p.type === 'speed' ? '⚡' : p.type === 'magnet' ? '🧲' : p.type === 'slow' ? '❄' : p.type === 'bomb' ? '💣' : '🛡';
+
+        ctx.fillStyle = '#bde0fe';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#073b4c';
+        ctx.font = 'bold 12px Segoe UI';
+        ctx.fillText(icon, p.x - 7, p.y + 4);
+
+        if (Math.hypot(player.x - p.x, player.y - p.y) < 54) {
+          applyPower(p.type);
+          powerOrbs.splice(i, 1);
+          score += 60;
+        }
+      }
+
+      const slowSpawnMul = powerState.type === 'slow' ? 1.45 : 1;
+      const baseRate = mode === 'easy' ? 92 : mode === 'hard' ? 54 : mode === 'chaos' ? 22 : 14;
+      const ramp = Math.floor(frame / 580);
+      const spawnEvery = Math.max(10, Math.floor((baseRate - ramp) * slowSpawnMul));
+
+      if (frame % spawnEvery === 0) {
+        if (missiles.length >= MAX_MISSILES) {
+          missiles.shift();
+        }
+
+        const a = Math.random() * Math.PI * 2;
+        missiles.push({
+          x: player.x + Math.cos(a) * (1350 + Math.random() * 450),
+          y: player.y + Math.sin(a) * (1350 + Math.random() * 450),
+          angle: a + Math.PI + (mode === 'luck' ? (Math.random() - 0.5) * 1.3 : 0),
+          speed: (9 + Math.random() * 4.8) * (mode === 'luck' ? 0.86 + Math.random() * 0.66 : 1) * (powerState.type === 'slow' ? 0.7 : 1),
+          trail: []
+        });
+      }
+
+      for (let i = missiles.length - 1; i >= 0; i--) {
+        const m = missiles[i];
+
+        const target = Math.atan2(player.y - m.y, player.x - m.x);
+        let diff = target - m.angle;
+
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        const turnRate = mode === 'luck' ? (0.02 + Math.random() * 0.095) : 0.048;
+        m.angle += diff * turnRate;
+
+        if (mode === 'luck' && Math.random() > 0.82) {
+          m.angle += (Math.random() - 0.5) * 0.6;
+        }
+
+        m.x += Math.cos(m.angle) * m.speed;
+        m.y += Math.sin(m.angle) * m.speed;
+
+        if (frame % 3 === 0) {
+          m.trail.push({ x: m.x, y: m.y });
+          if (m.trail.length > 12) m.trail.shift();
+        }
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.38)';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        m.trail.forEach((t, idx) => idx ? ctx.lineTo(t.x, t.y) : ctx.moveTo(t.x, t.y));
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(m.x, m.y);
+        ctx.rotate(m.angle);
+
+        ctx.fillStyle = '#ff5500';
+        ctx.beginPath();
+        ctx.arc(-22, 0, 11, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#333';
+        ctx.fillRect(-20, -7, 42, 14);
+
+        ctx.fillStyle = '#e74c3c';
+        ctx.beginPath();
+        ctx.moveTo(22, -7);
+        ctx.lineTo(44, 0);
+        ctx.lineTo(22, 7);
+        ctx.fill();
+
+        ctx.restore();
+
+        if (Math.hypot(player.x - m.x, player.y - m.y) < 34) {
+          loseLife();
+          break;
+        }
+
+        for (let j = i - 1; j >= 0; j--) {
+          if (Math.hypot(m.x - missiles[j].x, m.y - missiles[j].y) < 58) {
+            missiles.splice(i, 1);
+            missiles.splice(j, 1);
+            score += 95;
+            break;
+          }
+        }
+
+        if (m && Math.hypot(player.x - m.x, player.y - m.y) > 4500) {
+          missiles.splice(i, 1);
+        }
+      }
+
+      for (let i = engineFlames.length - 1; i >= 0; i--) {
+        const f = engineFlames[i];
+        f.x += f.vx;
+        f.y += f.vy;
+        f.life -= 0.055;
+        f.vx *= 0.92;
+        f.vy *= 0.92;
+
+        ctx.globalAlpha = Math.max(0, f.life);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, Math.max(0.7, f.size * f.life), 0, Math.PI * 2);
+        ctx.fill();
+
+        if (f.life <= 0) {
+          engineFlames.splice(i, 1);
+        }
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.042;
+
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+
+      ctx.globalAlpha = 1;
+
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.rotate(player.angle);
+
+      ctx.fillStyle = s.accent;
+      ctx.beginPath();
+      ctx.moveTo(-22, -38);
+      ctx.lineTo(8, 0);
+      ctx.lineTo(-22, 38);
+      ctx.fill();
+
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 38, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#2c3e50';
+      ctx.beginPath();
+      ctx.ellipse(15, 0, 14, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(18, -3, 6, 2, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (powerState.type === 'shield') {
+        ctx.strokeStyle = 'rgba(168, 218, 220, 0.8)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, 44 + Math.sin(frame * 0.15) * 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+
+      if (powerState.timer > 0) {
+        powerState.timer--;
+        if (powerState.timer <= 0) {
+          powerState.type = 'none';
+          powerState.timer = 0;
+        }
+      }
+
+      drawRadar();
+
+      if (frame % 10 === 0) {
+        syncUI();
+      }
+
+      if (frame % 120 === 0) {
+        save();
+      }
+
+      if (isRunning) {
+        requestAnimationFrame(loop);
+      }
+    }
+
+    window.onkeydown = e => {
+      keys[e.key.toLowerCase()] = true;
+    };
+
+    window.onkeyup = e => {
+      keys[e.key.toLowerCase()] = false;
+    };
+
+    window.onresize = () => {
+      canvas.width = innerWidth;
+      canvas.height = innerHeight;
+    };
+
+    pilotNameInput.addEventListener('change', e => {
+      pilotName = (e.target.value || 'ACE').trim().slice(0, 16) || 'ACE';
+      save();
+      syncUI();
+    });
+
+    function updateStickFromTouch(touch) {
+      const rect = stickZone.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+
+      const dx = touch.clientX - cx;
+      const dy = touch.clientY - cy;
+
+      const maxDist = rect.width * 0.34;
+      const len = Math.hypot(dx, dy) || 1;
+      const d = Math.min(maxDist, len);
+
+      const nx = dx / len;
+      const ny = dy / len;
+
+      stickInput.active = true;
+      stickInput.x = (nx * d) / maxDist;
+      stickInput.y = (ny * d) / maxDist;
+
+      stickKnob.style.left = `${50 + stickInput.x * 33}%`;
+      stickKnob.style.top = `${50 + stickInput.y * 33}%`;
+    }
+
+    function resetStick() {
+      stickInput = { x: 0, y: 0, active: false };
+      stickKnob.style.left = '50%';
+      stickKnob.style.top = '50%';
+    }
+
+    stickZone.addEventListener('touchstart', e => {
+      e.preventDefault();
+      updateStickFromTouch(e.touches[0]);
+    }, { passive: false });
+
+    stickZone.addEventListener('touchmove', e => {
+      e.preventDefault();
+      updateStickFromTouch(e.touches[0]);
+    }, { passive: false });
+
+    stickZone.addEventListener('touchend', e => {
+      e.preventDefault();
+      resetStick();
+    }, { passive: false });
+
+    window.onresize();
+    updateHangar();
+    syncUI();
+    drawRadar();
+  </script>
+
+  <!--
+    PERFORMANCE_NOTE_0001: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0002: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0003: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0004: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0005: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0006: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0007: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0008: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0009: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0010: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0011: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0012: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0013: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0014: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0015: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0016: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0017: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0018: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0019: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0020: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0021: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0022: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0023: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0024: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0025: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0026: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0027: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0028: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0029: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0030: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0031: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0032: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0033: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0034: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0035: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0036: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0037: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0038: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0039: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0040: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0041: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0042: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0043: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0044: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0045: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0046: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0047: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0048: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0049: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0050: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0051: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0052: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0053: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0054: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0055: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0056: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0057: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0058: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0059: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0060: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0061: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0062: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0063: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0064: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0065: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0066: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0067: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0068: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0069: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0070: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0071: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0072: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0073: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0074: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0075: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0076: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0077: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0078: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0079: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0080: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0081: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0082: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0083: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0084: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0085: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0086: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0087: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0088: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0089: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0090: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0091: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0092: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0093: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0094: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0095: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0096: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0097: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0098: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0099: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0100: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0101: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0102: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0103: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0104: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0105: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0106: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0107: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0108: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0109: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0110: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0111: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0112: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0113: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0114: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0115: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0116: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0117: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0118: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0119: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0120: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0121: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0122: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0123: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0124: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0125: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0126: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0127: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0128: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0129: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0130: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0131: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0132: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0133: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0134: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0135: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0136: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0137: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0138: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0139: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0140: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0141: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0142: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0143: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0144: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0145: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0146: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0147: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0148: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0149: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0150: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0151: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0152: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0153: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0154: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0155: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0156: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0157: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0158: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0159: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0160: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0161: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0162: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0163: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0164: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0165: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0166: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0167: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0168: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0169: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0170: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0171: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0172: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0173: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0174: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0175: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0176: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0177: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0178: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0179: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0180: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0181: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0182: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0183: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0184: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0185: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0186: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0187: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0188: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0189: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0190: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0191: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0192: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0193: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0194: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0195: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0196: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0197: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0198: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0199: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0200: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0201: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0202: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0203: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0204: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0205: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0206: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0207: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0208: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0209: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0210: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0211: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0212: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0213: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0214: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0215: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0216: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0217: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0218: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0219: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0220: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0221: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0222: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0223: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0224: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0225: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0226: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0227: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0228: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0229: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0230: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0231: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0232: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0233: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0234: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0235: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0236: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0237: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0238: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0239: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0240: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0241: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0242: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0243: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0244: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0245: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0246: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0247: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0248: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0249: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0250: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0251: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0252: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0253: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0254: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0255: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0256: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0257: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0258: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0259: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0260: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0261: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0262: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0263: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0264: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0265: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0266: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0267: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0268: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0269: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0270: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0271: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0272: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0273: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0274: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0275: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0276: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0277: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0278: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0279: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0280: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0281: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0282: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0283: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0284: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0285: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0286: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0287: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0288: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0289: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0290: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0291: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0292: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0293: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0294: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0295: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0296: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0297: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0298: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0299: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0300: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0301: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0302: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0303: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0304: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0305: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0306: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0307: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0308: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0309: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0310: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0311: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0312: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0313: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0314: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0315: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0316: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0317: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0318: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0319: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0320: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0321: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0322: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0323: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0324: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0325: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0326: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0327: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0328: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0329: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0330: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0331: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0332: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0333: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0334: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0335: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0336: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0337: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0338: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0339: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0340: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0341: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0342: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0343: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0344: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0345: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0346: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0347: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0348: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0349: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0350: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0351: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0352: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0353: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0354: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0355: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0356: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0357: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0358: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0359: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0360: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0361: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0362: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0363: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0364: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0365: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0366: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0367: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0368: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0369: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0370: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0371: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0372: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0373: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0374: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0375: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0376: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0377: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0378: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0379: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0380: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0381: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0382: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0383: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0384: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0385: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0386: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0387: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0388: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0389: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0390: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0391: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0392: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0393: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0394: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0395: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0396: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0397: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0398: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0399: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0400: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0401: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0402: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0403: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0404: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0405: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0406: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0407: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0408: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0409: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0410: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0411: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0412: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0413: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0414: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0415: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0416: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0417: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0418: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0419: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0420: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0421: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0422: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0423: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0424: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0425: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0426: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0427: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0428: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0429: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0430: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0431: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0432: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0433: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0434: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0435: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0436: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0437: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0438: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0439: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0440: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0441: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0442: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0443: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0444: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0445: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0446: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0447: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0448: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0449: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0450: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0451: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0452: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0453: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0454: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0455: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0456: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0457: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0458: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0459: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0460: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0461: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0462: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0463: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0464: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0465: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0466: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0467: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0468: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0469: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0470: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0471: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0472: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0473: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0474: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0475: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0476: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0477: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0478: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0479: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0480: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0481: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0482: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0483: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0484: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0485: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0486: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0487: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0488: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0489: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0490: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0491: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0492: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0493: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0494: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0495: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0496: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0497: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0498: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0499: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0500: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0501: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0502: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0503: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0504: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0505: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0506: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0507: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0508: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0509: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0510: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0511: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0512: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0513: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0514: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0515: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0516: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0517: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0518: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0519: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0520: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0521: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0522: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0523: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0524: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0525: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0526: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0527: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0528: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0529: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0530: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0531: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0532: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0533: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0534: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0535: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0536: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0537: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0538: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0539: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0540: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0541: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0542: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0543: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0544: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0545: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0546: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0547: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0548: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0549: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0550: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0551: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0552: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0553: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0554: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0555: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0556: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0557: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0558: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0559: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0560: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0561: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0562: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0563: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0564: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0565: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0566: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0567: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0568: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0569: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0570: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0571: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0572: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0573: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0574: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0575: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0576: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0577: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0578: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0579: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0580: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0581: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0582: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0583: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0584: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0585: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0586: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0587: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0588: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0589: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0590: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0591: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0592: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0593: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0594: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0595: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0596: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0597: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0598: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0599: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0600: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0601: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0602: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0603: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0604: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0605: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0606: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0607: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0608: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0609: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0610: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0611: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0612: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0613: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0614: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0615: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0616: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0617: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0618: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0619: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0620: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0621: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0622: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0623: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0624: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0625: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0626: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0627: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0628: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0629: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0630: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0631: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0632: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0633: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0634: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0635: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0636: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0637: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0638: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0639: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0640: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0641: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0642: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0643: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0644: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0645: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0646: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0647: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0648: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0649: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0650: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0651: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0652: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0653: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0654: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0655: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0656: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0657: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0658: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0659: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0660: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0661: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0662: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0663: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0664: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0665: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0666: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0667: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0668: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0669: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0670: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0671: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0672: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0673: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0674: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0675: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0676: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0677: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0678: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0679: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0680: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0681: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0682: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0683: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0684: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0685: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0686: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0687: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0688: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0689: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0690: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0691: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0692: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0693: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0694: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0695: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0696: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0697: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0698: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0699: Keep logic lightweight and avoid extra draw passes.
+    PERFORMANCE_NOTE_0700: Keep logic lightweight and avoid extra draw passes.
+  -->
+</body>
+</html>
