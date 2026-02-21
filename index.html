@@ -314,11 +314,8 @@
           <div class="hangar" id="hangar"></div>
           <div class="boost-list">
             <b>Power-ups:</b><br />
-            • ⚡ Nitro<br />
-            • 🛡 Shield<br />
-            • 🧲 Magnet<br />
-            • ❄ Slow Motion<br />
-            • 💣 Bomb
+            • ⚡ Speed Boost<br />
+            • 🧲 Magnet
           </div>
         </div>
       </div>
@@ -387,7 +384,8 @@
       y: 0,
       vx: 0,
       vy: 0,
-      angle: 0
+      angle: -Math.PI / 2,
+      turnVel: 0
     };
 
     const powerState = {
@@ -602,30 +600,12 @@
     }
 
     function applyPower(type) {
-      if (type === 'bomb') {
-        for (let i = missiles.length - 1; i >= 0; i--) {
-          if (Math.hypot(player.x - missiles[i].x, player.y - missiles[i].y) < 640) {
-            missiles.splice(i, 1);
-          }
-        }
-        score += 90;
-        powerState.type = 'none';
-        powerState.timer = 0;
-        return;
-      }
-
       powerState.type = type;
       powerState.timer = 60 * 8;
     }
 
     function spawnPowerOrb() {
-      const roll = Math.random();
-      let type = 'shield';
-      if (roll < 0.2) type = 'speed';
-      else if (roll < 0.4) type = 'magnet';
-      else if (roll < 0.6) type = 'slow';
-      else if (roll < 0.8) type = 'bomb';
-      else type = 'shield';
+      const type = Math.random() < 0.5 ? 'speed' : 'magnet';
 
       powerOrbs.push({
         type,
@@ -646,13 +626,15 @@
       player.y = 0;
       player.vx = 0;
       player.vy = 0;
-      player.angle = 0;
+      player.angle = -Math.PI / 2;
+      player.turnVel = 0;
 
       powerState.type = 'none';
       powerState.timer = 0;
     }
 
     function startGame() {
+      if (isRunning) return;
       pilotName = (pilotNameInput.value || 'ACE').trim().slice(0, 16) || 'ACE';
       save();
 
@@ -673,13 +655,6 @@
     }
 
     function loseLife() {
-      if (powerState.type === 'shield') {
-        powerState.type = 'none';
-        powerState.timer = 0;
-        spawnExplosion(player.x, player.y, '#8ecae6', '#ffffff');
-        return;
-      }
-
       spawnExplosion(player.x, player.y);
       isRunning = false;
 
@@ -726,27 +701,29 @@
       });
 
       const s = SHIPS[activeShip];
-      const speedMul = powerState.type === 'speed' ? 1.35 : 1;
-      const accel = s.speed * GLOBAL_SPEED_NERF * speedMul;
+      const speedMul = powerState.type === 'speed' ? 1.3 : 1;
+      const forwardBase = mode === 'easy' ? 12.5 : mode === 'hard' ? 15.2 : mode === 'chaos' ? 18.4 : 16.3;
+      const forwardSpeed = forwardBase * speedMul;
 
-      if (stickInput.active) {
-        player.vx += stickInput.x * accel;
-        player.vy += stickInput.y * accel;
-      }
+      let steerInput =
+        (stickInput.active ? stickInput.x : 0) +
+        ((keys['d'] || keys['arrowright']) ? 1 : 0) -
+        ((keys['a'] || keys['arrowleft']) ? 1 : 0);
+      if (steerInput > 1) steerInput = 1;
+      if (steerInput < -1) steerInput = -1;
 
-      if (keys['w'] || keys['arrowup']) player.vy -= accel;
-      if (keys['s'] || keys['arrowdown']) player.vy += accel;
-      if (keys['a'] || keys['arrowleft']) player.vx -= accel;
-      if (keys['d'] || keys['arrowright']) player.vx += accel;
+      const turnAcceleration = 0.0118 * s.turn;
+      const maxTurnVel = 0.086;
+      player.turnVel += steerInput * turnAcceleration;
+      player.turnVel *= 0.948;
+      if (player.turnVel > maxTurnVel) player.turnVel = maxTurnVel;
+      if (player.turnVel < -maxTurnVel) player.turnVel = -maxTurnVel;
 
-      player.vx *= 0.955;
-      player.vy *= 0.955;
+      player.angle += player.turnVel;
+      player.vx = Math.cos(player.angle) * forwardSpeed;
+      player.vy = Math.sin(player.angle) * forwardSpeed;
       player.x += player.vx;
       player.y += player.vy;
-
-      if (Math.hypot(player.vx, player.vy) > 0.2) {
-        player.angle = Math.atan2(player.vy, player.vx);
-      }
 
       camX += (player.x - camX) * 0.1;
       camY += (player.y - camY) * 0.1;
@@ -817,7 +794,7 @@
           continue;
         }
 
-        const icon = p.type === 'speed' ? '⚡' : p.type === 'magnet' ? '🧲' : p.type === 'slow' ? '❄' : p.type === 'bomb' ? '💣' : '🛡';
+        const icon = p.type === 'speed' ? '⚡' : '🧲';
         const inViewOrb = Math.abs(p.x - camX) < (canvas.width / (2 * zoom) + 240) && Math.abs(p.y - camY) < (canvas.height / (2 * zoom) + 240);
 
         if (inViewOrb) {
@@ -838,10 +815,9 @@
         }
       }
 
-      const slowSpawnMul = powerState.type === 'slow' ? 1.45 : 1;
       const baseRate = mode === 'easy' ? 92 : mode === 'hard' ? 54 : mode === 'chaos' ? 22 : 14;
       const ramp = Math.floor(frame / 580);
-      const spawnEvery = Math.max(10, Math.floor((baseRate - ramp) * slowSpawnMul));
+      const spawnEvery = Math.max(10, baseRate - ramp);
 
       if (frame % spawnEvery === 0) {
         if (missiles.length >= MAX_MISSILES) {
@@ -853,7 +829,7 @@
           x: player.x + Math.cos(a) * (1350 + Math.random() * 450),
           y: player.y + Math.sin(a) * (1350 + Math.random() * 450),
           angle: a + Math.PI + (mode === 'luck' ? (Math.random() - 0.5) * 1.3 : 0),
-          speed: (9 + Math.random() * 4.8) * (mode === 'luck' ? 0.86 + Math.random() * 0.66 : 1) * (powerState.type === 'slow' ? 0.7 : 1),
+          speed: (9 + Math.random() * 4.8) * (mode === 'luck' ? 0.86 + Math.random() * 0.66 : 1),
           bornFrame: frame,
           trail: []
         });
@@ -928,16 +904,25 @@
           break;
         }
 
+        let removedByMissileCollision = false;
         for (let j = i - 1; j >= 0; j--) {
-          if (Math.hypot(m.x - missiles[j].x, m.y - missiles[j].y) < 58) {
+          const other = missiles[j];
+          if (!other) continue;
+
+          const dx = m.x - other.x;
+          const dy = m.y - other.y;
+          if (dx * dx + dy * dy < 58 * 58) {
             missiles.splice(i, 1);
             missiles.splice(j, 1);
             score += 95;
+            removedByMissileCollision = true;
             break;
           }
         }
 
-        if (m && Math.hypot(player.x - m.x, player.y - m.y) > 4500) {
+        if (removedByMissileCollision) continue;
+
+        if (Math.hypot(player.x - m.x, player.y - m.y) > 4500) {
           missiles.splice(i, 1);
         }
       }
@@ -1005,14 +990,6 @@
       ctx.beginPath();
       ctx.ellipse(18, -3, 6, 2, 0.4, 0, Math.PI * 2);
       ctx.fill();
-
-      if (powerState.type === 'shield') {
-        ctx.strokeStyle = 'rgba(168, 218, 220, 0.8)';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(0, 0, 44 + Math.sin(frame * 0.15) * 2, 0, Math.PI * 2);
-        ctx.stroke();
-      }
 
       ctx.restore();
 
@@ -1101,6 +1078,14 @@
       e.preventDefault();
       resetStick();
     }, { passive: false });
+
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        keys = {};
+        resetStick();
+      }
+    });
 
     window.onresize();
     updateHangar();
@@ -1812,4 +1797,3 @@
   -->
 </body>
 </html>
-
