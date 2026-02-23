@@ -904,25 +904,16 @@
           break;
         }
 
-        let removedByMissileCollision = false;
         for (let j = i - 1; j >= 0; j--) {
-          const other = missiles[j];
-          if (!other) continue;
-
-          const dx = m.x - other.x;
-          const dy = m.y - other.y;
-          if (dx * dx + dy * dy < 58 * 58) {
+          if (Math.hypot(m.x - missiles[j].x, m.y - missiles[j].y) < 58) {
             missiles.splice(i, 1);
             missiles.splice(j, 1);
             score += 95;
-            removedByMissileCollision = true;
             break;
           }
         }
 
-        if (removedByMissileCollision) continue;
-
-        if (Math.hypot(player.x - m.x, player.y - m.y) > 4500) {
+        if (m && Math.hypot(player.x - m.x, player.y - m.y) > 4500) {
           missiles.splice(i, 1);
         }
       }
@@ -1782,7 +1773,7 @@
     PERFORMANCE_NOTE_0686: Keep logic lightweight and avoid extra draw passes.
     PERFORMANCE_NOTE_0687: Keep logic lightweight and avoid extra draw passes.
     PERFORMANCE_NOTE_0688: Keep logic lightweight and avoid extra draw passes.
-    PERFORMANCE_NOTE_0689: Keep logic lightweight and avoid extra draw passes.
+     PERFORMANCE_NOTE_0689: Keep logic lightweight and avoid extra draw passes.
     PERFORMANCE_NOTE_0690: Keep logic lightweight and avoid extra draw passes.
     PERFORMANCE_NOTE_0691: Keep logic lightweight and avoid extra draw passes.
     PERFORMANCE_NOTE_0692: Keep logic lightweight and avoid extra draw passes.
